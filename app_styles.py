@@ -1,6 +1,7 @@
 """
 Modern Studio Dark Theme QSS Stylesheet for Desktop Audio Tuner & Equalizer Pro.
 High-end metallic obsidian finish with neon cyan (#00e5ff), emerald green (#00e676), and violet accents.
+Optimized for high-DPI scaling and responsive spacing to prevent text clipping.
 """
 
 DARK_THEME_QSS = """
@@ -9,7 +10,7 @@ QWidget {
     background-color: #0b0f17;
     color: #e6edf3;
     font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, "Microsoft JhengHei", sans-serif;
-    font-size: 13px;
+    font-size: 12px;
     selection-background-color: #1f6feb;
     selection-color: #ffffff;
 }
@@ -18,7 +19,7 @@ QWidget {
 QFrame#cardFrame {
     background-color: #131924;
     border: 1px solid #243042;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
 QFrame#subCardFrame {
@@ -29,10 +30,10 @@ QFrame#subCardFrame {
 
 /* Header Banner */
 QLabel#appTitleLabel {
-    font-size: 19px;
+    font-size: 17px;
     font-weight: 800;
     color: #ffffff;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.5px;
 }
 
 QLabel#appSubTitleLabel {
@@ -42,7 +43,7 @@ QLabel#appSubTitleLabel {
 }
 
 QLabel#apoBadgeActive {
-    background-color: #132d22;
+    background-color: #11281e;
     color: #00e676;
     border: 1px solid #00e676;
     border-radius: 6px;
@@ -66,8 +67,7 @@ QLabel#sectionTitle {
     font-size: 11px;
     font-weight: 700;
     color: #8b9bb4;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
+    letter-spacing: 0.5px;
 }
 
 /* Buttons */
@@ -75,9 +75,10 @@ QPushButton {
     background-color: #1c2536;
     color: #c9d5e8;
     border: 1px solid #2b394e;
-    border-radius: 8px;
-    padding: 6px 14px;
+    border-radius: 6px;
+    padding: 5px 10px;
     font-weight: 600;
+    font-size: 12px;
 }
 
 QPushButton:hover {
@@ -102,6 +103,7 @@ QPushButton#primaryBtn {
     color: #ffffff;
     border: 1px solid #2ea043;
     font-weight: 700;
+    padding: 5px 12px;
 }
 
 QPushButton#primaryBtn:hover {
@@ -113,6 +115,8 @@ QPushButton#bypassBtnActive {
     color: #ff9b50;
     border: 1px solid #ff9b50;
     font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 6px;
 }
 
 QPushButton#bypassBtnNormal {
@@ -120,6 +124,8 @@ QPushButton#bypassBtnNormal {
     color: #00e676;
     border: 1px solid #00e676;
     font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 6px;
 }
 
 /* ComboBox */
@@ -127,10 +133,11 @@ QComboBox {
     background-color: #131924;
     color: #e6edf3;
     border: 1px solid #2b394e;
-    border-radius: 8px;
-    padding: 6px 12px;
+    border-radius: 6px;
+    padding: 4px 8px;
     min-height: 20px;
     font-weight: 600;
+    font-size: 12px;
 }
 
 QComboBox:hover {
@@ -140,7 +147,7 @@ QComboBox:hover {
 QComboBox::drop-down {
     subcontrol-origin: padding;
     subcontrol-position: top right;
-    width: 26px;
+    width: 22px;
     border-left: 1px solid #2b394e;
 }
 
@@ -149,7 +156,7 @@ QComboBox::down-arrow {
     border-left: 4px solid transparent;
     border-right: 4px solid transparent;
     border-top: 5px solid #8b9bb4;
-    margin-right: 6px;
+    margin-right: 4px;
 }
 
 QComboBox QAbstractItemView {
@@ -158,7 +165,7 @@ QComboBox QAbstractItemView {
     border: 1px solid #2b394e;
     selection-background-color: #1f6feb;
     selection-color: #ffffff;
-    padding: 6px;
+    padding: 4px;
     outline: none;
 }
 
@@ -183,9 +190,9 @@ QSlider::handle:vertical {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:0.4 #d1d5db, stop:1.0 #9ca3af);
     border: 1px solid #2b394e;
     height: 18px;
-    width: 22px;
-    margin-left: -8px;
-    margin-right: -8px;
+    width: 20px;
+    margin-left: -7px;
+    margin-right: -7px;
     border-radius: 4px;
 }
 
@@ -225,14 +232,14 @@ QSlider::handle:horizontal:hover {
 
 /* CheckBox */
 QCheckBox {
-    spacing: 8px;
+    spacing: 6px;
     color: #c9d5e8;
     font-weight: 500;
 }
 
 QCheckBox::indicator {
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     border-radius: 4px;
     border: 1px solid #2b394e;
     background-color: #131924;
@@ -252,7 +259,7 @@ QToolTip {
     background-color: #131924;
     color: #e6edf3;
     border: 1px solid #2b394e;
-    padding: 6px 10px;
+    padding: 5px 8px;
     border-radius: 6px;
 }
 
@@ -262,5 +269,6 @@ QStatusBar {
     color: #8b9bb4;
     font-size: 11px;
     border-top: 1px solid #1c2636;
+    padding: 2px 8px;
 }
 """

@@ -35,8 +35,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Desktop Audio Tuner & Equalizer Pro - 電腦音質優化與等化器調音")
-        self.resize(920, 860)
-        self.setMinimumSize(800, 780)
+        self.resize(980, 880)
+        self.setMinimumSize(840, 760)
 
         # App Icon
         icon_path = os.path.join(os.path.dirname(__file__), "assets", "app_icon.ico")
@@ -78,21 +78,21 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(18, 16, 18, 14)
-        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(16, 12, 16, 10)
+        main_layout.setSpacing(8)
 
         # ==========================================
-        # 1. Top Header: Logo, APO Status, Bypass, Pin
+        # 1. Top Header: Logo, APO Badge, Pin, Tray
         # ==========================================
         header_card = QFrame()
         header_card.setObjectName("cardFrame")
         header_layout = QHBoxLayout(header_card)
-        header_layout.setContentsMargins(14, 10, 14, 10)
+        header_layout.setContentsMargins(14, 8, 14, 8)
         header_layout.setSpacing(12)
 
         # Brand / Logo
         brand_layout = QVBoxLayout()
-        brand_layout.setSpacing(2)
+        brand_layout.setSpacing(1)
         title_label = QLabel("Desktop Audio Tuner Pro")
         title_label.setObjectName("appTitleLabel")
         subtitle_label = QLabel("Windows 全系統音質優化與即時 10-Band EQ")
@@ -100,6 +100,8 @@ class MainWindow(QMainWindow):
         brand_layout.addWidget(title_label)
         brand_layout.addWidget(subtitle_label)
         header_layout.addLayout(brand_layout)
+
+        header_layout.addStretch()
 
         # Equalizer APO Status Badge
         if self.eq_engine.apo_installed:
@@ -112,18 +114,7 @@ class MainWindow(QMainWindow):
             self.apo_badge.setToolTip("未偵測到 Equalizer APO，目前正在即時測試台模式運行。")
         header_layout.addWidget(self.apo_badge)
 
-        header_layout.addStretch()
-
-        # Prominent A/B Bypass / Audition Button
-        self.btn_bypass = QPushButton("🟢 【等化器優化已生效】(點擊切換原音比對)")
-        self.btn_bypass.setObjectName("bypassBtnNormal")
-        self.btn_bypass.setMinimumWidth(260)
-        self.btn_bypass.setToolTip("在「原音直通 (Bypass)」與「等化器優化」之間無縫切換，瞬間感受自己播放音樂的音質對比！")
-        self.btn_bypass.setCheckable(True)
-        self.btn_bypass.clicked.connect(self._toggle_bypass)
-        header_layout.addWidget(self.btn_bypass)
-
-        # Stay on Top
+        # Stay on Top Checkbox
         self.chk_stay_on_top = QCheckBox("視窗置頂")
         self.chk_stay_on_top.setToolTip("保持調音器在所有遊戲與視窗最上層")
         self.chk_stay_on_top.stateChanged.connect(self._toggle_stay_on_top)
@@ -138,26 +129,26 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(header_card)
 
         # ==========================================
-        # 2. Preset Selection & Output Device Bar
+        # 2. Preset Selection & Instant A/B Audition Bar
         # ==========================================
         preset_card = QFrame()
         preset_card.setObjectName("cardFrame")
         preset_layout = QHBoxLayout(preset_card)
-        preset_layout.setContentsMargins(14, 8, 14, 8)
-        preset_layout.setSpacing(10)
+        preset_layout.setContentsMargins(12, 6, 12, 6)
+        preset_layout.setSpacing(8)
 
-        lbl_preset = QLabel("調音情境預設:")
+        lbl_preset = QLabel("調音預設:")
         lbl_preset.setObjectName("sectionTitle")
         preset_layout.addWidget(lbl_preset)
 
         self.preset_combo = QComboBox()
-        self.preset_combo.setMinimumWidth(250)
+        self.preset_combo.setMinimumWidth(180)
         self._refresh_presets_combo()
         self.preset_combo.currentIndexChanged.connect(self._on_preset_selected)
         preset_layout.addWidget(self.preset_combo)
 
         # Save Preset Button
-        btn_save_preset = QPushButton("💾 儲存自訂預設")
+        btn_save_preset = QPushButton("💾 儲存自訂")
         btn_save_preset.setToolTip("將目前的 EQ 與音質旋鈕設定儲存為新預設")
         btn_save_preset.clicked.connect(self._save_custom_preset_dialog)
         preset_layout.addWidget(btn_save_preset)
@@ -168,24 +159,22 @@ class MainWindow(QMainWindow):
         self.btn_del_preset.clicked.connect(self._delete_custom_preset_action)
         preset_layout.addWidget(self.btn_del_preset)
 
-        preset_layout.addStretch()
-
-        # Output Device Selector (for loopback monitor)
-        lbl_dev = QLabel("監聽輸出裝置:")
-        lbl_dev.setObjectName("sectionTitle")
-        preset_layout.addWidget(lbl_dev)
-
-        self.device_combo = QComboBox()
-        self.device_combo.setMinimumWidth(180)
-        self._populate_output_devices()
-        self.device_combo.currentIndexChanged.connect(self._on_monitor_device_changed)
-        preset_layout.addWidget(self.device_combo)
-
         # Reset Flat Button
-        btn_reset_flat = QPushButton("⟲ 全部重設平直 (Flat)")
+        btn_reset_flat = QPushButton("⟲ 重設平直 (Flat)")
         btn_reset_flat.setToolTip("將所有頻段推桿與強化旋鈕重設為 0 dB 平直原音")
         btn_reset_flat.clicked.connect(self._reset_flat_action)
         preset_layout.addWidget(btn_reset_flat)
+
+        preset_layout.addStretch()
+
+        # Prominent A/B Bypass / Audition Button
+        self.btn_bypass = QPushButton("🟢 【等化器優化已生效】(點擊切換原音比對)")
+        self.btn_bypass.setObjectName("bypassBtnNormal")
+        self.btn_bypass.setMinimumWidth(260)
+        self.btn_bypass.setToolTip("在「原音直通 (Bypass)」與「等化器優化」之間無縫切換，瞬間感受自己播放音樂的音質對比！")
+        self.btn_bypass.setCheckable(True)
+        self.btn_bypass.clicked.connect(self._toggle_bypass)
+        preset_layout.addWidget(self.btn_bypass)
 
         main_layout.addWidget(preset_card)
 
@@ -195,12 +184,36 @@ class MainWindow(QMainWindow):
         vis_card = QFrame()
         vis_card.setObjectName("cardFrame")
         vis_layout = QVBoxLayout(vis_card)
-        vis_layout.setContentsMargins(12, 10, 12, 10)
+        vis_layout.setContentsMargins(10, 8, 10, 8)
         vis_layout.setSpacing(6)
 
+        # Interactive Response Curve
         self.curve_widget = EQCurveWidget()
         self.curve_widget.band_changed.connect(self._on_curve_point_dragged)
         vis_layout.addWidget(self.curve_widget, 1)
+
+        # Device & Status Sub-bar above spectrum
+        spec_info_bar = QHBoxLayout()
+        spec_info_bar.setContentsMargins(4, 0, 4, 0)
+        spec_info_bar.setSpacing(8)
+
+        self.lbl_monitor_status = QLabel("● 即時監聽就緒 (請播放音樂/影片)")
+        self.lbl_monitor_status.setStyleSheet("color: #00e676; font-weight: 700; font-size: 11px;")
+        spec_info_bar.addWidget(self.lbl_monitor_status)
+
+        spec_info_bar.addStretch()
+
+        lbl_dev = QLabel("監聽輸出裝置:")
+        lbl_dev.setObjectName("sectionTitle")
+        spec_info_bar.addWidget(lbl_dev)
+
+        self.device_combo = QComboBox()
+        self.device_combo.setMinimumWidth(180)
+        self._populate_output_devices()
+        self.device_combo.currentIndexChanged.connect(self._on_monitor_device_changed)
+        spec_info_bar.addWidget(self.device_combo)
+
+        vis_layout.addLayout(spec_info_bar)
 
         # Real-time Spectrum Analyzer
         self.spectrum_widget = SpectrumWidget()
@@ -214,12 +227,12 @@ class MainWindow(QMainWindow):
         sliders_card = QFrame()
         sliders_card.setObjectName("cardFrame")
         sliders_layout = QHBoxLayout(sliders_card)
-        sliders_layout.setContentsMargins(14, 12, 14, 12)
-        sliders_layout.setSpacing(8)
+        sliders_layout.setContentsMargins(12, 10, 12, 10)
+        sliders_layout.setSpacing(6)
 
         for i, (freq_label, desc) in enumerate(zip(EQ_BAND_LABELS, EQ_BAND_DESCRIPTIONS)):
             col = QVBoxLayout()
-            col.setSpacing(4)
+            col.setSpacing(3)
             col.setAlignment(Qt.AlignCenter)
 
             # Gain Label (+0.0 dB)
@@ -233,7 +246,7 @@ class MainWindow(QMainWindow):
             slider = QSlider(Qt.Vertical)
             slider.setRange(-120, 120)
             slider.setValue(0)
-            slider.setMinimumHeight(125)
+            slider.setMinimumHeight(120)
             slider.setToolTip(f"{freq_label} ({desc})\n點兩下重設為 0.0 dB")
             slider.valueChanged.connect(lambda val, idx=i: self._on_slider_changed(idx, val))
             self.sliders.append(slider)
@@ -261,8 +274,8 @@ class MainWindow(QMainWindow):
         knobs_card = QFrame()
         knobs_card.setObjectName("cardFrame")
         knobs_layout = QHBoxLayout(knobs_card)
-        knobs_layout.setContentsMargins(14, 10, 14, 10)
-        knobs_layout.setSpacing(14)
+        knobs_layout.setContentsMargins(12, 8, 12, 8)
+        knobs_layout.setSpacing(12)
 
         # Bass Boost Knob
         self.dial_bass = RotaryDialWidget("重低音加強", 0, 100, 0, "%")
@@ -296,19 +309,19 @@ class MainWindow(QMainWindow):
         player_card = QFrame()
         player_card.setObjectName("cardFrame")
         player_layout = QHBoxLayout(player_card)
-        player_layout.setContentsMargins(14, 8, 14, 8)
-        player_layout.setSpacing(10)
+        player_layout.setContentsMargins(12, 6, 12, 6)
+        player_layout.setSpacing(8)
 
         # Play/Pause Button
         self.btn_play = QPushButton("播放試聽 ▶")
         self.btn_play.setObjectName("primaryBtn")
-        self.btn_play.setFixedWidth(95)
+        self.btn_play.setFixedWidth(90)
         self.btn_play.clicked.connect(self._toggle_playback)
         player_layout.addWidget(self.btn_play)
 
         # Stop Button
         btn_stop = QPushButton("停止 ■")
-        btn_stop.setFixedWidth(65)
+        btn_stop.setFixedWidth(60)
         btn_stop.clicked.connect(self.dsp_player.stop)
         player_layout.addWidget(btn_stop)
 
@@ -341,7 +354,7 @@ class MainWindow(QMainWindow):
         slider_vol = QSlider(Qt.Horizontal)
         slider_vol.setRange(0, 100)
         slider_vol.setValue(50)
-        slider_vol.setFixedWidth(75)
+        slider_vol.setFixedWidth(70)
         slider_vol.valueChanged.connect(lambda v: self.dsp_player.set_volume(v / 100.0))
         player_layout.addWidget(slider_vol)
 
@@ -406,12 +419,19 @@ class MainWindow(QMainWindow):
 
     def _on_device_info_ready(self, device_name: str):
         self.current_monitor_device = device_name
+        short_name = device_name.split("(")[0].strip() if "(" in device_name else device_name
+        self.lbl_monitor_status.setText(f"● 正在即時響應系統播放中: {short_name}")
         self.spectrum_widget.set_monitor_status(device_name, self.system_monitor._running)
 
     def _on_monitor_status_changed(self, is_active: bool):
+        short_name = self.current_monitor_device.split("(")[0].strip() if "(" in self.current_monitor_device else self.current_monitor_device
+        if is_active:
+            self.lbl_monitor_status.setText(f"● 正在即時響應系統播放中: {short_name}")
+            self.lbl_monitor_status.setStyleSheet("color: #00e676; font-weight: 700; font-size: 11px;")
+        else:
+            self.lbl_monitor_status.setText(f"○ 即時監聽已就緒: {short_name} (等待音樂/影片播放)")
+            self.lbl_monitor_status.setStyleSheet("color: #8b9bb4; font-weight: 600; font-size: 11px;")
         self.spectrum_widget.set_monitor_status(self.current_monitor_device, is_active)
-        if is_active and not self.dsp_player.is_playing:
-            self.statusBar().showMessage(f"● 正在即時響應系統播放音樂: {self.current_monitor_device}")
 
     def _toggle_stay_on_top(self, state):
         on = (state == Qt.Checked)
