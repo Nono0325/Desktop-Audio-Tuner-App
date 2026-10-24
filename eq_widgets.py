@@ -253,21 +253,25 @@ class EQCurveWidget(QWidget):
 
 class SpectrumWidget(QWidget):
     """
-    Real-time 48-band spectrum visualizer with peak hold & gravity decay.
+    Real-time 48-band spectrum visualizer with peak hold, gravity decay,
+    device status indicator, and frequency region markers.
     """
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedHeight(54)
+        self.setFixedHeight(68)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self.bars = np.zeros(48, dtype=np.float32)
         self.peaks = np.zeros(48, dtype=np.float32)
-        self.peak_decay = 0.015
+        self.peak_decay = 0.018
+
+        self.status_text = "即時監聽中 (等待音樂播放...)"
+        self.is_active = False
 
         self.decay_timer = QTimer(self)
         self.decay_timer.timeout.connect(self._decay_step)
-        self.decay_timer.start(25)
+        self.decay_timer.start(20)
 
     def set_spectrum(self, bars: np.ndarray):
         n = min(len(self.bars), len(bars))
@@ -275,58 +279,88 @@ class SpectrumWidget(QWidget):
         self.peaks[:n] = np.maximum(self.peaks[:n], self.bars[:n])
         self.update()
 
+    def set_monitor_status(self, device_name: str, is_active: bool):
+        self.is_active = is_active
+        short_name = device_name.split("(")[0].strip() if "(" in device_name else device_name
+        if is_active:
+            self.status_text = f"● 正在即時響應系統播放中: {short_name}"
+        else:
+            self.status_text = f"○ 即時監聽已就緒: {short_name} (請播放音樂/影片)"
+        self.update()
+
     def _decay_step(self):
-        self.bars *= 0.88
+        self.bars *= 0.86
         self.peaks = np.maximum(0.0, self.peaks - self.peak_decay)
         self.update()
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.TextAntialiasing)
 
         w = float(self.width())
         h = float(self.height())
 
-        # Dark container
-        painter.setBrush(QBrush(QColor(13, 17, 24)))
-        painter.setPen(QPen(QColor(28, 36, 48), 1))
-        painter.drawRoundedRect(QRectF(0, 0, w, h), 6, 6)
+        # Dark container background
+        painter.setBrush(QBrush(QColor(11, 15, 22)))
+        painter.setPen(QPen(QColor(28, 38, 52), 1))
+        painter.drawRoundedRect(QRectF(0, 0, w, h), 8, 8)
 
         n = len(self.bars)
         if n == 0 or w <= 0:
             return
 
         bar_spacing = 2.0
-        bar_w = max(2.0, (w - 12.0 - (n - 1) * bar_spacing) / n)
+        bar_w = max(2.0, (w - 16.0 - (n - 1) * bar_spacing) / n)
+        spec_h = h - 20.0  # leave 16px at bottom for frequency labels
 
         for i in range(n):
-            bx = 6.0 + i * (bar_w + bar_spacing)
+            bx = 8.0 + i * (bar_w + bar_spacing)
             val = float(self.bars[i])
-            bar_h = max(2.0, val * (h - 10.0))
-            by = h - 5.0 - bar_h
+            bar_h = max(2.0, val * (spec_h - 10.0))
+            by = spec_h - bar_h + 4.0
 
             # Dynamic Gradient (Cyan -> Emerald -> Purple)
             ratio = i / float(n)
-            if ratio < 0.5:
+            if ratio < 0.45:
                 r = 0
-                g = int(210 + 45 * (ratio / 0.5))
-                b = int(255 * (1.0 - ratio / 0.5) + 120 * (ratio / 0.5))
+                g = int(210 + 45 * (ratio / 0.45))
+                b = int(255 * (1.0 - ratio / 0.45) + 120 * (ratio / 0.45))
             else:
-                norm_r = (ratio - 0.5) / 0.5
+                norm_r = (ratio - 0.45) / 0.55
                 r = int(168 * norm_r)
                 g = int(240 * (1.0 - norm_r) + 85 * norm_r)
                 b = int(120 * (1.0 - norm_r) + 247 * norm_r)
 
-            painter.setBrush(QBrush(QColor(r, g, b, 210)))
+            alpha = 230 if self.is_active else 120
+            painter.setBrush(QBrush(QColor(r, g, b, alpha)))
             painter.setPen(Qt.NoPen)
             painter.drawRoundedRect(QRectF(bx, by, bar_w, bar_h), 1.5, 1.5)
 
-            # Peak marker
+            # Peak hold line
             peak_val = float(self.peaks[i])
-            if peak_val > 0.05:
-                py = h - 5.0 - peak_val * (h - 10.0)
-                painter.setPen(QPen(QColor(255, 255, 255, 180), 1.5))
+            if peak_val > 0.04:
+                py = spec_h - peak_val * (spec_h - 10.0) + 4.0
+                painter.setPen(QPen(QColor(255, 255, 255, 210 if self.is_active else 90), 1.5))
                 painter.drawLine(QPointF(bx, py), QPointF(bx + bar_w, py))
+
+        # Bottom Frequency Guide Labels (Sub-bass, Bass, Mid, Presence, Treble)
+        font_lbl = QFont("Segoe UI", 7, QFont.Bold)
+        painter.setFont(font_lbl)
+        painter.setPen(QColor(90, 110, 140))
+        freq_markers = [(0.05, "30Hz (超低音)"), (0.22, "125Hz (低頻)"), (0.45, "1kHz (中頻人聲)"), (0.72, "4kHz (清晰度)"), (0.92, "16kHz (空氣感)")]
+        for pos_ratio, text in freq_markers:
+            tx = pos_ratio * (w - 20)
+            painter.drawText(QRectF(tx - 35, h - 14, 70, 12), Qt.AlignCenter, text)
+
+        # Status Badge (Top-left overlay)
+        status_font = QFont("Segoe UI", 8, QFont.Bold)
+        painter.setFont(status_font)
+        if self.is_active:
+            painter.setPen(QColor(0, 255, 136))
+        else:
+            painter.setPen(QColor(130, 150, 180))
+        painter.drawText(QRectF(10, 4, w - 20, 16), Qt.AlignLeft, self.status_text)
 
 
 class RotaryDialWidget(QWidget):

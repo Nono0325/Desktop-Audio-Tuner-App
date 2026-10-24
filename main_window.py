@@ -1,7 +1,8 @@
 """
 Main Application Window for Desktop Audio Tuner & Equalizer Pro.
 Combines 10-Band Graphic EQ, Interactive Response Curve, Studio Enhancement Knobs,
-System-wide Equalizer APO real-time synchronization, and an Audio Test Bench.
+System-wide Equalizer APO real-time synchronization, Live System Audio Loopback Spectrum,
+and Audio Test Bench.
 """
 
 import os
@@ -23,6 +24,7 @@ from equalizer_engine import (
     EQ_BAND_DESCRIPTIONS, DEFAULT_PRESETS
 )
 from audio_dsp_player import AudioDspPlayer
+from system_audio_monitor import SystemAudioMonitor
 from eq_widgets import EQCurveWidget, SpectrumWidget, RotaryDialWidget
 from app_styles import DARK_THEME_QSS
 
@@ -33,8 +35,8 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Desktop Audio Tuner & Equalizer Pro - 電腦音質優化與等化器調音")
-        self.resize(880, 840)
-        self.setMinimumSize(780, 760)
+        self.resize(920, 860)
+        self.setMinimumSize(800, 780)
 
         # App Icon
         icon_path = os.path.join(os.path.dirname(__file__), "assets", "app_icon.ico")
@@ -47,11 +49,13 @@ class MainWindow(QMainWindow):
         # Core Engines
         self.eq_engine = EqualizerEngine()
         self.dsp_player = AudioDspPlayer()
+        self.system_monitor = SystemAudioMonitor()
 
         # UI State
         self.sliders: List[QSlider] = []
         self.slider_val_labels: List[QLabel] = []
         self._updating_ui = False
+        self.current_monitor_device = "預設音訊輸出"
 
         # Build UI & Connect Signals
         self.setStyleSheet(DARK_THEME_QSS)
@@ -59,8 +63,14 @@ class MainWindow(QMainWindow):
         self._setup_tray_icon()
         self._sync_all_to_ui()
 
-        # DSP Player Connections
-        self.dsp_player.spectrum_updated.connect(self.spectrum_widget.set_spectrum)
+        # Connect Live System Audio Loopback Monitor
+        self.system_monitor.spectrum_ready.connect(self._on_system_spectrum_ready)
+        self.system_monitor.device_info_ready.connect(self._on_device_info_ready)
+        self.system_monitor.status_changed.connect(self._on_monitor_status_changed)
+        self.system_monitor.start()
+
+        # Connect Built-in Player Signals
+        self.dsp_player.spectrum_updated.connect(self._on_player_spectrum_ready)
         self.dsp_player.playback_state_changed.connect(self._on_playback_state_changed)
         self.dsp_player.position_updated.connect(self._on_position_updated)
 
@@ -85,7 +95,7 @@ class MainWindow(QMainWindow):
         brand_layout.setSpacing(2)
         title_label = QLabel("Desktop Audio Tuner Pro")
         title_label.setObjectName("appTitleLabel")
-        subtitle_label = QLabel("Windows 全系統音質優化與 10-Band EQ")
+        subtitle_label = QLabel("Windows 全系統音質優化與即時 10-Band EQ")
         subtitle_label.setObjectName("appSubTitleLabel")
         brand_layout.addWidget(title_label)
         brand_layout.addWidget(subtitle_label)
@@ -93,7 +103,7 @@ class MainWindow(QMainWindow):
 
         # Equalizer APO Status Badge
         if self.eq_engine.apo_installed:
-            self.apo_badge = QLabel("● Windows 全系統調音已連線 (APO)")
+            self.apo_badge = QLabel("● Windows 全系統已連線 (APO)")
             self.apo_badge.setObjectName("apoBadgeActive")
             self.apo_badge.setToolTip("所有由 Windows 輸出的音訊 (Spotify, YouTube, 遊戲, 影音) 皆受此調音優化！")
         else:
@@ -104,16 +114,18 @@ class MainWindow(QMainWindow):
 
         header_layout.addStretch()
 
-        # Bypass / Direct A/B Button
-        self.btn_bypass = QPushButton("A/B 效果比對: 已開啟優化")
+        # Prominent A/B Bypass / Audition Button
+        self.btn_bypass = QPushButton("🟢 【等化器優化已生效】(點擊切換原音比對)")
         self.btn_bypass.setObjectName("bypassBtnNormal")
-        self.btn_bypass.setToolTip("快速切換原音直通與等化器優化，方便即時比對音質差異！")
+        self.btn_bypass.setMinimumWidth(260)
+        self.btn_bypass.setToolTip("在「原音直通 (Bypass)」與「等化器優化」之間無縫切換，瞬間感受自己播放音樂的音質對比！")
         self.btn_bypass.setCheckable(True)
         self.btn_bypass.clicked.connect(self._toggle_bypass)
         header_layout.addWidget(self.btn_bypass)
 
         # Stay on Top
         self.chk_stay_on_top = QCheckBox("視窗置頂")
+        self.chk_stay_on_top.setToolTip("保持調音器在所有遊戲與視窗最上層")
         self.chk_stay_on_top.stateChanged.connect(self._toggle_stay_on_top)
         header_layout.addWidget(self.chk_stay_on_top)
 
@@ -126,7 +138,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(header_card)
 
         # ==========================================
-        # 2. Preset Selection & Management Bar
+        # 2. Preset Selection & Output Device Bar
         # ==========================================
         preset_card = QFrame()
         preset_card.setObjectName("cardFrame")
@@ -139,7 +151,7 @@ class MainWindow(QMainWindow):
         preset_layout.addWidget(lbl_preset)
 
         self.preset_combo = QComboBox()
-        self.preset_combo.setMinimumWidth(260)
+        self.preset_combo.setMinimumWidth(250)
         self._refresh_presets_combo()
         self.preset_combo.currentIndexChanged.connect(self._on_preset_selected)
         preset_layout.addWidget(self.preset_combo)
@@ -158,6 +170,17 @@ class MainWindow(QMainWindow):
 
         preset_layout.addStretch()
 
+        # Output Device Selector (for loopback monitor)
+        lbl_dev = QLabel("監聽輸出裝置:")
+        lbl_dev.setObjectName("sectionTitle")
+        preset_layout.addWidget(lbl_dev)
+
+        self.device_combo = QComboBox()
+        self.device_combo.setMinimumWidth(180)
+        self._populate_output_devices()
+        self.device_combo.currentIndexChanged.connect(self._on_monitor_device_changed)
+        preset_layout.addWidget(self.device_combo)
+
         # Reset Flat Button
         btn_reset_flat = QPushButton("⟲ 全部重設平直 (Flat)")
         btn_reset_flat.setToolTip("將所有頻段推桿與強化旋鈕重設為 0 dB 平直原音")
@@ -167,7 +190,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(preset_card)
 
         # ==========================================
-        # 3. Frequency Response Curve & Spectrum Analyzer
+        # 3. Frequency Response Curve & Real-Time Spectrum
         # ==========================================
         vis_card = QFrame()
         vis_card.setObjectName("cardFrame")
@@ -179,6 +202,7 @@ class MainWindow(QMainWindow):
         self.curve_widget.band_changed.connect(self._on_curve_point_dragged)
         vis_layout.addWidget(self.curve_widget, 1)
 
+        # Real-time Spectrum Analyzer
         self.spectrum_widget = SpectrumWidget()
         vis_layout.addWidget(self.spectrum_widget)
 
@@ -209,7 +233,7 @@ class MainWindow(QMainWindow):
             slider = QSlider(Qt.Vertical)
             slider.setRange(-120, 120)
             slider.setValue(0)
-            slider.setMinimumHeight(130)
+            slider.setMinimumHeight(125)
             slider.setToolTip(f"{freq_label} ({desc})\n點兩下重設為 0.0 dB")
             slider.valueChanged.connect(lambda val, idx=i: self._on_slider_changed(idx, val))
             self.sliders.append(slider)
@@ -317,14 +341,14 @@ class MainWindow(QMainWindow):
         slider_vol = QSlider(Qt.Horizontal)
         slider_vol.setRange(0, 100)
         slider_vol.setValue(50)
-        slider_vol.setFixedWidth(80)
+        slider_vol.setFixedWidth(75)
         slider_vol.valueChanged.connect(lambda v: self.dsp_player.set_volume(v / 100.0))
         player_layout.addWidget(slider_vol)
 
         main_layout.addWidget(player_card)
 
         # Status Bar
-        self.statusBar().showMessage("準備就緒 | 等化器已同步至 Windows 系統音效")
+        self.statusBar().showMessage("準備就緒 | 等化器已同步至 Windows 系統音效，支援 YouTube / Spotify 即時響應")
 
     def _setup_tray_icon(self):
         """Setup Windows system tray icon."""
@@ -355,6 +379,40 @@ class MainWindow(QMainWindow):
             self.showNormal()
             self.activateWindow()
 
+    def _populate_output_devices(self):
+        self.device_combo.clear()
+        self.device_combo.addItem("預設系統輸出 (自動追蹤)")
+        devs = self.system_monitor.get_output_devices()
+        for d in devs:
+            short = d.split("(")[0].strip() if "(" in d else d
+            self.device_combo.addItem(short, d)
+
+    def _on_monitor_device_changed(self, index: int):
+        if index == 0:
+            self.system_monitor.set_device(None)
+        else:
+            dev_name = self.device_combo.currentData()
+            self.system_monitor.set_device(dev_name)
+
+    def _on_system_spectrum_ready(self, bars: np.ndarray):
+        """Receive live spectrum from whatever music Windows is currently playing."""
+        if not self.dsp_player.is_playing:
+            self.spectrum_widget.set_spectrum(bars)
+
+    def _on_player_spectrum_ready(self, bars: np.ndarray):
+        """Receive spectrum from built-in audio player."""
+        if self.dsp_player.is_playing:
+            self.spectrum_widget.set_spectrum(bars)
+
+    def _on_device_info_ready(self, device_name: str):
+        self.current_monitor_device = device_name
+        self.spectrum_widget.set_monitor_status(device_name, self.system_monitor._running)
+
+    def _on_monitor_status_changed(self, is_active: bool):
+        self.spectrum_widget.set_monitor_status(self.current_monitor_device, is_active)
+        if is_active and not self.dsp_player.is_playing:
+            self.statusBar().showMessage(f"● 正在即時響應系統播放音樂: {self.current_monitor_device}")
+
     def _toggle_stay_on_top(self, state):
         on = (state == Qt.Checked)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, on)
@@ -363,14 +421,15 @@ class MainWindow(QMainWindow):
     def _toggle_bypass(self):
         new_state = not self.eq_engine.bypass
         self.eq_engine.set_bypass(new_state)
+        self.eq_engine.force_sync()
         if new_state:
-            self.btn_bypass.setText("A/B 效果比對: 原音直通 (Bypass)")
+            self.btn_bypass.setText("🟠 【原音直通 (Bypass)】(點擊開啟等化器優化)")
             self.btn_bypass.setObjectName("bypassBtnActive")
-            self.statusBar().showMessage("已開啟原音直通 (Bypass) - 正在聆聽未修飾的原始聲音")
+            self.statusBar().showMessage("已開啟原音直通 (Bypass) - 正在聆聽未修飾的原始聲音 (可用於對比調音效果)")
         else:
-            self.btn_bypass.setText("A/B 效果比對: 已開啟優化")
+            self.btn_bypass.setText("🟢 【等化器優化已生效】(點擊切換原音比對)")
             self.btn_bypass.setObjectName("bypassBtnNormal")
-            self.statusBar().showMessage("已套用等化器音質優化！")
+            self.statusBar().showMessage("已套用等化器音質優化！全系統聲音立即更新。")
         self.btn_bypass.setStyle(self.btn_bypass.style())
         self._sync_dsp_player_and_curve()
 
@@ -391,8 +450,9 @@ class MainWindow(QMainWindow):
             return
         name = text.replace("★ ", "")
         if self.eq_engine.apply_preset(name):
+            self.eq_engine.force_sync()
             self._sync_all_to_ui()
-            self.statusBar().showMessage(f"已套用調音預設: {name}")
+            self.statusBar().showMessage(f"已套用調音預設: {name} (全系統聲音立即同步)")
 
     def _save_custom_preset_dialog(self):
         name, ok = QInputDialog.getText(self, "儲存自訂預設", "請輸入新預設名稱:")
@@ -421,6 +481,7 @@ class MainWindow(QMainWindow):
 
     def _reset_flat_action(self):
         self.eq_engine.reset_flat()
+        self.eq_engine.force_sync()
         self._sync_all_to_ui()
         self.statusBar().showMessage("已將所有等化器推桿與旋鈕重設為 0.0 dB 平直原音。")
 
@@ -538,6 +599,7 @@ class MainWindow(QMainWindow):
 
     def _quit_application(self):
         self.dsp_player.stop()
+        self.system_monitor.stop()
         self.tray_icon.hide()
         sys.exit(0)
 
@@ -554,4 +616,5 @@ class MainWindow(QMainWindow):
             event.ignore()
         else:
             self.dsp_player.stop()
+            self.system_monitor.stop()
             event.accept()

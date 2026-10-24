@@ -307,7 +307,7 @@ class EqualizerEngine:
         with self._apo_lock:
             if self._write_timer is not None:
                 self._write_timer.cancel()
-            self._write_timer = threading.Timer(0.04, self._write_apo_config)
+            self._write_timer = threading.Timer(0.015, self._write_apo_config)
             self._write_timer.daemon = True
             self._write_timer.start()
 
@@ -343,6 +343,11 @@ class EqualizerEngine:
 
                 with open(APO_CONFIG_FILE, "w", encoding="utf-8") as f:
                     f.write(content)
+                    f.flush()
+                    try:
+                        os.fsync(f.fileno())
+                    except Exception:
+                        pass
 
             except Exception as e:
                 print(f"Error updating Equalizer APO: {e}")
