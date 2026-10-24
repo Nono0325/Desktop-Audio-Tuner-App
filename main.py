@@ -6,12 +6,11 @@ A professional native Windows desktop application for computer sound optimizatio
 import ctypes
 import os
 import sys
+import traceback
 
 from PyQt5.QtCore import Qt, QCoreApplication
 from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QApplication
-
-from main_window import MainWindow
+from PyQt5.QtWidgets import QApplication, QMessageBox
 
 
 def main():
@@ -35,10 +34,18 @@ def main():
     if os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
 
-    window = MainWindow()
-    window.show()
-
-    sys.exit(app.exec_())
+    try:
+        from main_window import MainWindow
+        window = MainWindow()
+        window.show()
+        window.raise_()
+        window.activateWindow()
+        sys.exit(app.exec_())
+    except Exception as e:
+        err_msg = traceback.format_exc()
+        print(f"Startup error:\n{err_msg}", file=sys.stderr)
+        QMessageBox.critical(None, "啟動錯誤", f"程式啟動時發生錯誤：\n\n{str(e)}\n\n詳細資訊：\n{err_msg}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
